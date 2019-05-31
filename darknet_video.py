@@ -5,7 +5,6 @@ import darknet
 import mjpegstreamer
 from threading import Thread
 import argparse
-import requests
 
 
 def convertBack(x, y, w, h):
@@ -70,7 +69,7 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0):
     # Create an image we reuse for each detect
     darknet_image = darknet.make_image(darknet.network_width(netMain),
                                        darknet.network_height(netMain), 3)
-    mjpeg = mjpegstreamer.MJPGServer(ip)
+    mjpeg = mjpegstreamer.MJPEGServer(ip)
     try:
         while True:
             prev_time = time.time()
@@ -90,8 +89,6 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0):
             if not mjpeg.started():
                 mpjeg_server_thread = Thread(target=mjpeg.start, args=(port,), daemon=True)
                 mpjeg_server_thread.start()
-                ask_mpjeg_thread = Thread(target=mjpeg.ask_mjpeg, args=(ip, port), daemon=True)
-                ask_mpjeg_thread.start()
     except KeyboardInterrupt:
         import sys
         sys.exit()
