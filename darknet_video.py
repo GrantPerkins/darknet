@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import time
 import darknet
+import mjpegstreamer
 
 def convertBack(x, y, w, h):
     xmin = int(round(x - (w / 2)))
@@ -39,7 +40,7 @@ metaMain = None
 altNames = None
 
 
-def YOLO():
+def YOLO(width=640, height=480):
 
     global metaMain, netMain, altNames
     configPath = "./cfg/yolov3.cfg"
@@ -79,18 +80,16 @@ def YOLO():
                     pass
         except Exception:
             pass
-    #cap = cv2.VideoCapture(0)
-    cap = cv2.VideoCapture("test.mp4")
-    cap.set(3, 1280)
-    cap.set(4, 720)
-    out = cv2.VideoWriter(
-        "output.avi", cv2.VideoWriter_fourcc(*"MJPG"), 10.0,
-        (darknet.network_width(netMain), darknet.network_height(netMain)))
+    cap = cv2.VideoCapture(0)
+    cap.set(3, width)
+    cap.set(4, height)
     print("Starting the YOLO loop...")
 
     # Create an image we reuse for each detect
     darknet_image = darknet.make_image(darknet.network_width(netMain),
                                     darknet.network_height(netMain),3)
+    mjpeg = mjpegstreamer.MJPGServer()
+
     while True:
         prev_time = time.time()
         ret, frame_read = cap.read()
@@ -105,9 +104,11 @@ def YOLO():
         detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
         image = cvDrawBoxes(detections, frame_resized)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        mjpeg.send_image(image)
+        if not mjpeg.started():
+            mjpeg.start()
+
         print(1/(time.time()-prev_time))
-        cv2.imshow('Demo', image)
-        cv2.waitKey(3)
     cap.release()
     out.release()
 
