@@ -1,9 +1,15 @@
+from ctypes import *
+import math
+import random
 import os
 import cv2
+import numpy as np
 import time
 import darknet
 import mjpegstreamer
 from threading import Thread
+from urllib import request
+import socket
 import requests
 
 
@@ -23,6 +29,15 @@ def cvDrawBoxes(detections, img):
                      detection[2][3]
         xmin, ymin, xmax, ymax = convertBack(
             float(x), float(y), float(w), float(h))
+        print("X: ")
+        print(x);
+        print(" Y: ")
+        print(y)
+        print(" W: ")
+        print(w)
+        print(" H: ")
+        print(h)
+        print("\n")
         pt1 = (xmin, ymin)
         pt2 = (xmax, ymax)
         cv2.rectangle(img, pt1, pt2, (0, 255, 0), 1)
@@ -39,7 +54,7 @@ metaMain = None
 altNames = None
 
 
-def YOLO(width=640, height=480, ip='130.215.169.204', port="8091"):
+def YOLO(width=640, height=480, ip='10.1.90.2', port="8091"):
     global metaMain, netMain, altNames
     configPath = "./model.cfg"
     weightPath = "./model.weights"
@@ -87,31 +102,37 @@ def YOLO(width=640, height=480, ip='130.215.169.204', port="8091"):
     darknet_image = darknet.make_image(darknet.network_width(netMain),
                                        darknet.network_height(netMain), 3)
     mjpeg = mjpegstreamer.MJPGServer(ip)
+    try:
+        while True:
+            prev_time = time.time()
+            ret, frame_read = cap.read()
+            frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
+            frame_resized = cv2.resize(frame_rgb,
+                                       (darknet.network_width(netMain),
+                                        darknet.network_height(netMain)),
+                                       interpolation=cv2.INTER_LINEAR)
 
-    while True:
-        prev_time = time.time()
-        ret, frame_read = cap.read()
-        frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
-        frame_resized = cv2.resize(frame_rgb,
-                                   (darknet.network_width(netMain),
-                                    darknet.network_height(netMain)),
-                                   interpolation=cv2.INTER_LINEAR)
+            darknet.copy_image_from_bytes(darknet_image, frame_resized.tobytes())
 
-        darknet.copy_image_from_bytes(darknet_image, frame_resized.tobytes())
-
-        detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
-        image = cvDrawBoxes(detections, frame_resized)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        mjpeg.send_image(image)
-        if not mjpeg.started():
-            thread = Thread(target=mjpeg.start, args=(port,))
-            thread.start()
-            thread_req = Thread(target=force_req, args=(ip, port))
-            thread_req.start()
+            detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
+            image = cvDrawBoxes(detections, frame_resized)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            mjpeg.send_image(image)
+            if not mjpeg.started():
+                thread = Thread(target=mjpeg.start, args=(port,), daemon=True)
+                thread.start()
+                thread_req = Thread(target=force_req, args=(ip, port), daemon=True)
+                thread_req.start()
+    except KeyboardInterrupt:
+        import sys
+        sys.exit()
 
     #         print(1/(time.time()-prev_time))
     cap.release()
     out.release()
+
+
+import requests
 
 
 def force_req(ip, port):
