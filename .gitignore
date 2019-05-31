@@ -33,6 +33,7 @@ Thumbs.db
 # IDE generated #
 .vs/
 .vscode/
+.idea/
 
 lib/
 include/
