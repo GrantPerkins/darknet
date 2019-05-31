@@ -21,8 +21,6 @@ class MJPGServer:
                 print("Server starting")
                 print(server.server_port)
                 server.serve_forever()
-
-
         except KeyboardInterrupt:
             # ctrl-c comes here but need another to end all
             print("KeyboardInterrpt in server - ending server")
