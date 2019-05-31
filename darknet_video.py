@@ -45,7 +45,7 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0):
     # TODO: make these cmd line arguments, no default video
     configPath = "./model.cfg"
     weightPath = "./model.weights"
-    metaPath = "./cfg/coco.data"
+    metaPath = "./model.data"
     if not os.path.exists(configPath):
         raise ValueError("Invalid config path `" +
                          os.path.abspath(configPath) + "`")
