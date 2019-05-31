@@ -58,25 +58,6 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0):
     netMain = darknet.load_net_custom(configPath.encode(
         "ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
     metaMain = darknet.load_meta(metaPath.encode("ascii"))
-    try:
-        with open(metaPath) as metaFH:
-            metaContents = metaFH.read()
-            import re
-            match = re.search("names *= *(.*)$", metaContents,
-                              re.IGNORECASE | re.MULTILINE)
-            if match:
-                result = match.group(1)
-            else:
-                result = None
-            try:
-                if os.path.exists(result):
-                    with open(result) as namesFH:
-                        namesList = namesFH.read().strip().split("\n")
-                        altNames = [x.strip() for x in namesList]
-            except TypeError:
-                pass
-    except Exception:
-        pass
 
     if str(source).isdigit():
         source = int(source)

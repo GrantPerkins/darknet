@@ -34,6 +34,7 @@ Thumbs.db
 .vs/
 .vscode/
 .idea/
+/__pycache__/
 
 lib/
 include/
