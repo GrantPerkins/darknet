@@ -90,7 +90,7 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0):
             if not mjpeg.started():
                 mpjeg_server_thread = Thread(target=mjpeg.start, args=(port,), daemon=True)
                 mpjeg_server_thread.start()
-                ask_mpjeg_thread = Thread(target=ask_mjpeg, args=(ip, port), daemon=True)
+                ask_mpjeg_thread = Thread(target=mjpeg.ask_mjpeg, args=(ip, port), daemon=True)
                 ask_mpjeg_thread.start()
     except KeyboardInterrupt:
         import sys
@@ -101,10 +101,7 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0):
     out.release()
 
 
-def ask_mjpeg(ip, port):
-    time.sleep(5)
-    while 1:
-        requests.get("http://" + ip + ":" + port + "/")
+
 
 
 if __name__ == "__main__":

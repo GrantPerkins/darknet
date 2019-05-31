@@ -1,10 +1,12 @@
 import cv2
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
+import time
+from urllib.request import urlopen
 
 
 class MJPGServer:
-    def __init__(self, ip='130.215.169.204'):
+    def __init__(self, ip):
         self.frame = None
         self._has_started = False
         self._ip = ip
@@ -12,25 +14,25 @@ class MJPGServer:
     def started(self):
         return self._has_started
 
-    def start(self, port=8091):
+    def start(self, port):
         self._has_started = True
-        try:
-            CamHandler.set_capture(self)
-            with ThreadedHTTPServer((self._ip, int(port)), CamHandler) as server:
-                print("Done intializing")
-                print("Server starting")
-                print(server.server_port)
-                server.serve_forever()
-        except KeyboardInterrupt:
-            # ctrl-c comes here but need another to end all
-            print("KeyboardInterrpt in server - ending server")
-            server.socket.close()
+        CamHandler.set_capture(self)
+        with ThreadedHTTPServer((self._ip, int(port)), CamHandler) as server:
+            print("Done intializing")
+            print("Server starting")
+            print(server.server_port)
+            server.serve_forever()
 
     def send_image(self, img):
         self.frame = img
 
     def get_image(self):
         return self.frame
+
+    def ask_mjpeg(self, ip, port):
+        time.sleep(5)
+        while 1:
+            urlopen("http://" + ip + ":" + port + "/").read()
 
 
 class CamHandler(BaseHTTPRequestHandler):
@@ -41,7 +43,6 @@ class CamHandler(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'multipart/x-mixed-replace; boundary=jpgboundary')
         self.end_headers()
         while True:
-            img = None
             try:
                 # capture image from camera
                 img = CamHandler.capture.get_image()
