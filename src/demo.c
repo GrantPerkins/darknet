@@ -218,6 +218,17 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
             //printf("\033[2J");
             //printf("\033[1;1H");
             //printf("\nFPS:%.1f\n", fps);
+			int i=0;
+			while(i<local_nboxes){
+				detection d=local_dets[i];
+				box a = d.bbox;
+				float dx = a.x;
+				float dy = a.y;
+				float dw = a.w;
+				float dh = a.h;
+				printf("dx: %f, dy: %f, dw: %f, dh: %f\n",dx,dy,dw,dh);
+				i++;
+			}
             printf("Objects:\n\n");
 
             ++frame_id;

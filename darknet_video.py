@@ -1,15 +1,10 @@
-from ctypes import *
-import math
-import random
 import os
 import cv2
-import numpy as np
 import time
 import darknet
 import mjpegstreamer
 from threading import Thread
-from urllib import request
-import socket
+import argparse
 import requests
 
 
@@ -29,14 +24,11 @@ def cvDrawBoxes(detections, img):
                      detection[2][3]
         xmin, ymin, xmax, ymax = convertBack(
             float(x), float(y), float(w), float(h))
-        print("X: ")
-        print(x);
-        print(" Y: ")
-        print(y)
-        print(" W: ")
-        print(w)
-        print(" H: ")
-        print(h)
+        print(detection[0].decode(), str(round(detection[1] * 100, 2)) + "%")
+        print("X:", round(x))
+        print("Y:", round(y))
+        print("W:", round(w))
+        print("H:", round(h))
         print("\n")
         pt1 = (xmin, ymin)
         pt2 = (xmax, ymax)
@@ -49,13 +41,8 @@ def cvDrawBoxes(detections, img):
     return img
 
 
-netMain = None
-metaMain = None
-altNames = None
-
-
-def YOLO(width=640, height=480, ip='10.1.90.2', port="8091"):
-    global metaMain, netMain, altNames
+def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0):
+    # TODO: make these cmd line arguments, no default video
     configPath = "./model.cfg"
     weightPath = "./model.weights"
     metaPath = "./cfg/coco.data"
@@ -68,35 +55,36 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8091"):
     if not os.path.exists(metaPath):
         raise ValueError("Invalid data file path `" +
                          os.path.abspath(metaPath) + "`")
-    if netMain is None:
-        netMain = darknet.load_net_custom(configPath.encode(
-            "ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
-    if metaMain is None:
-        metaMain = darknet.load_meta(metaPath.encode("ascii"))
-    if altNames is None:
-        try:
-            with open(metaPath) as metaFH:
-                metaContents = metaFH.read()
-                import re
-                match = re.search("names *= *(.*)$", metaContents,
-                                  re.IGNORECASE | re.MULTILINE)
-                if match:
-                    result = match.group(1)
-                else:
-                    result = None
-                try:
-                    if os.path.exists(result):
-                        with open(result) as namesFH:
-                            namesList = namesFH.read().strip().split("\n")
-                            altNames = [x.strip() for x in namesList]
-                except TypeError:
-                    pass
-        except Exception:
-            pass
-    cap = cv2.VideoCapture(1)
+    netMain = darknet.load_net_custom(configPath.encode(
+        "ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
+    metaMain = darknet.load_meta(metaPath.encode("ascii"))
+    try:
+        with open(metaPath) as metaFH:
+            metaContents = metaFH.read()
+            import re
+            match = re.search("names *= *(.*)$", metaContents,
+                              re.IGNORECASE | re.MULTILINE)
+            if match:
+                result = match.group(1)
+            else:
+                result = None
+            try:
+                if os.path.exists(result):
+                    with open(result) as namesFH:
+                        namesList = namesFH.read().strip().split("\n")
+                        altNames = [x.strip() for x in namesList]
+            except TypeError:
+                pass
+    except Exception:
+        pass
+
+    if str(source).isdigit():
+        source = int(source)
+
+    cap = cv2.VideoCapture(source)
     cap.set(3, width)
     cap.set(4, height)
-    print("Starting the YOLO loop...")
+    print("Start YOLO processing...")
 
     # Create an image we reuse for each detect
     darknet_image = darknet.make_image(darknet.network_width(netMain),
@@ -119,10 +107,10 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8091"):
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             mjpeg.send_image(image)
             if not mjpeg.started():
-                thread = Thread(target=mjpeg.start, args=(port,), daemon=True)
-                thread.start()
-                thread_req = Thread(target=force_req, args=(ip, port), daemon=True)
-                thread_req.start()
+                mpjeg_server_thread = Thread(target=mjpeg.start, args=(port,), daemon=True)
+                mpjeg_server_thread.start()
+                ask_mpjeg_thread = Thread(target=ask_mjpeg, args=(ip, port), daemon=True)
+                ask_mpjeg_thread.start()
     except KeyboardInterrupt:
         import sys
         sys.exit()
@@ -132,14 +120,19 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8091"):
     out.release()
 
 
-import requests
-
-
-def force_req(ip, port):
+def ask_mjpeg(ip, port):
     time.sleep(5)
     while 1:
         requests.get("http://" + ip + ":" + port + "/")
 
 
 if __name__ == "__main__":
-    YOLO()
+    parser = argparse.ArgumentParser("WPILib implementation of darknet")
+    parser.add_argument('--ip', dest="ip", default='10.1.90.2',
+                        help="Change the ip address where the MJPEG is streamed")
+    parser.add_argument('--height', dest="height", default=480, type=int, help="Change the height of the input frame")
+    parser.add_argument('--width', dest="width", default=640, type=int, help="Change the width of the input frame")
+    parser.add_argument('--source', dest="source", default='0',
+                        help="Change the source of the video. Can either be a camera id (0, 1, ...) or a file location (any OpenCV supported file type, .mp4, .webm, etc.)")
+    args = parser.parse_args()
+    YOLO(ip=args.ip, height=args.height, width=args.width, source=args.source)
