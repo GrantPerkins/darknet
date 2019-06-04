@@ -40,7 +40,7 @@ def cvDrawBoxes(detections, img):
     return img
 
 
-def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0):
+def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, mjpeg=True):
     # TODO: make these cmd line arguments, no default video
     configPath = "./model.cfg"
     weightPath = "./model.weights"
@@ -69,7 +69,9 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0):
     # Create an image we reuse for each detect
     darknet_image = darknet.make_image(darknet.network_width(netMain),
                                        darknet.network_height(netMain), 3)
-    mjpeg = mjpegstreamer.MJPEGServer(ip)
+    mjpeg = None
+    if mjpeg:
+        mjpegstream = mjpegstreamer.MJPEGServer(ip)
     try:
         while True:
             prev_time = time.time()
@@ -85,10 +87,11 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0):
             detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
             image = cvDrawBoxes(detections, frame_resized)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            mjpeg.send_image(image)
-            if not mjpeg.started():
-                mpjeg_server_thread = Thread(target=mjpeg.start, args=(port,), daemon=True)
-                mpjeg_server_thread.start()
+            if mjpeg:
+                mjpegstream.send_image(image)
+                if not mjpegstream.started():
+                    mpjeg_server_thread = Thread(target=mjpegstream.start, args=(port,), daemon=True)
+                    mpjeg_server_thread.start()
     except KeyboardInterrupt:
         import sys
         sys.exit()
@@ -104,10 +107,11 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("WPILib implementation of darknet")
     parser.add_argument('--ip', dest="ip", default='10.1.90.2',
-                        help="Change the ip address where the MJPEG is streamed")
+                        help="Change the ip address where the MJPEG is streamed. Port is 8190.")
     parser.add_argument('--height', dest="height", default=480, type=int, help="Change the height of the input frame")
     parser.add_argument('--width', dest="width", default=640, type=int, help="Change the width of the input frame")
     parser.add_argument('--source', dest="source", default='0',
                         help="Change the source of the video. Can either be a camera id (0, 1, ...) or a file location (any OpenCV supported file type, .mp4, .webm, etc.)")
+    parser.add_argument('--mjpeg', dest="mjpeg", default=True, type=bool, help="Toggle MJPEG stream")
     args = parser.parse_args()
-    YOLO(ip=args.ip, height=args.height, width=args.width, source=args.source)
+    YOLO(ip=args.ip, height=args.height, width=args.width, source=args.source, mpjeg=args.mjpeg)
