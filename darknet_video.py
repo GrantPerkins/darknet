@@ -5,6 +5,7 @@ import darknet
 import mjpegstreamer
 from threading import Thread
 import argparse
+import csv
 
 
 def convertBack(x, y, w, h):
@@ -15,7 +16,7 @@ def convertBack(x, y, w, h):
     return xmin, ymin, xmax, ymax
 
 
-def cvDrawBoxes(detections, img):
+def cvDrawBoxes(detections, img, first):
     for detection in detections:
         x, y, w, h = detection[2][0], \
                      detection[2][1], \
@@ -29,6 +30,22 @@ def cvDrawBoxes(detections, img):
         print("W:", round(w))
         print("H:", round(h))
         print("\n")
+ 
+        csvData = [detection[0].decode(),round(x),round(y),round(w), round(h)]
+        csvHeader = ['object','X','Y','W','H']
+
+        if first == 0:
+            with open('darknet.csv', 'w') as csvFile:
+                writer = csv.writer(csvFile)
+                writer.writerows(csvHeader)
+                first = 1
+
+        with open('darknet.csv', 'a') as csvFile:
+            writer = csv.writer(csvFile)
+            writer.writerows(csvData)
+
+        csvFile.close()
+
         pt1 = (xmin, ymin)
         pt2 = (xmax, ymax)
         cv2.rectangle(img, pt1, pt2, (0, 255, 0), 1)
@@ -45,6 +62,7 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, dest="ip"
     configPath = "./model.cfg"
     weightPath = "./model.weights"
     metaPath = "./model.data"
+    first = 0
     if not os.path.exists(configPath):
         raise ValueError("Invalid config path `" +
                          os.path.abspath(configPath) + "`")
@@ -88,7 +106,7 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, dest="ip"
             darknet.copy_image_from_bytes(darknet_image, frame_resized.tobytes())
 
             detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
-            image = cvDrawBoxes(detections, frame_resized)
+            image = cvDrawBoxes(detections, frame_resized, first)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             if dest=='ip':
                 mjpegstream.send_image(image)
