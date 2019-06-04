@@ -40,7 +40,7 @@ def cvDrawBoxes(detections, img):
     return img
 
 
-def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, mjpeg=True):
+def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, dest="ip"):
     # TODO: make these cmd line arguments, no default video
     configPath = "./model.cfg"
     weightPath = "./model.weights"
@@ -69,9 +69,12 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, mjpeg=Tru
     # Create an image we reuse for each detect
     darknet_image = darknet.make_image(darknet.network_width(netMain),
                                        darknet.network_height(netMain), 3)
-    mjpeg = None
-    if mjpeg:
+    mjpegstream = None
+    out = None
+    if dest=="ip":
         mjpegstream = mjpegstreamer.MJPEGServer(ip)
+    elif dest.endswith(".mp4"):
+        out = cv2.VideoWriter(dest, cv2.VideoWriter_fourcc(*'MP4V'), 7.0, (640, 480))
     try:
         while True:
             prev_time = time.time()
@@ -87,11 +90,13 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, mjpeg=Tru
             detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
             image = cvDrawBoxes(detections, frame_resized)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            if mjpeg:
+            if dest=='ip':
                 mjpegstream.send_image(image)
                 if not mjpegstream.started():
                     mpjeg_server_thread = Thread(target=mjpegstream.start, args=(port,), daemon=True)
                     mpjeg_server_thread.start()
+            elif dest.endswith(".mp4"):
+                out.write(image)
     except KeyboardInterrupt:
         import sys
         sys.exit()
@@ -112,6 +117,6 @@ if __name__ == "__main__":
     parser.add_argument('--width', dest="width", default=640, type=int, help="Change the width of the input frame")
     parser.add_argument('--source', dest="source", default='0',
                         help="Change the source of the video. Can either be a camera id (0, 1, ...) or a file location (any OpenCV supported file type, .mp4, .webm, etc.)")
-    parser.add_argument('--mjpeg', dest="mjpeg", default=True, type=bool, help="Toggle MJPEG stream")
+    parser.add_argument("--dest", dest="dest", default="ip", help="Point output video to file instead")
     args = parser.parse_args()
-    YOLO(ip=args.ip, height=args.height, width=args.width, source=args.source, mpjeg=args.mjpeg)
+    YOLO(ip=args.ip, height=args.height, width=args.width, source=args.source, dest=args.dest)
