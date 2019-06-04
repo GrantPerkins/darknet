@@ -16,7 +16,7 @@ def convertBack(x, y, w, h):
     return xmin, ymin, xmax, ymax
 
 
-def cvDrawBoxes(detections, img, first):
+def cvDrawBoxes(detections, img, first, csv_name):
     for detection in detections:
         x, y, w, h = detection[2][0], \
                      detection[2][1], \
@@ -35,12 +35,12 @@ def cvDrawBoxes(detections, img, first):
         csvHeader = ['object','X','Y','W','H']
 
         if first == 0:
-            with open('darknet.csv', 'w') as csvFile:
+            with open(csv_name, 'w') as csvFile:
                 writer = csv.writer(csvFile)
                 writer.writerows(csvHeader)
                 first = 1
 
-        with open('darknet.csv', 'a') as csvFile:
+        with open(csv_name, 'a') as csvFile:
             writer = csv.writer(csvFile)
             writer.writerows(csvData)
 
@@ -57,7 +57,7 @@ def cvDrawBoxes(detections, img, first):
     return img
 
 
-def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, dest="ip"):
+def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, dest="ip", csv_name="darknet.csv"):
     # TODO: make these cmd line arguments, no default video
     configPath = "./model.cfg"
     weightPath = "./model.weights"
@@ -106,7 +106,7 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, dest="ip"
             darknet.copy_image_from_bytes(darknet_image, frame_resized.tobytes())
 
             detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
-            image = cvDrawBoxes(detections, frame_resized, first)
+            image = cvDrawBoxes(detections, frame_resized, first, csv_name)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             if dest=='ip':
                 mjpegstream.send_image(image)
@@ -125,8 +125,6 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, dest="ip"
 
 
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("WPILib implementation of darknet")
     parser.add_argument('--ip', dest="ip", default='10.1.90.2',
@@ -136,5 +134,6 @@ if __name__ == "__main__":
     parser.add_argument('--source', dest="source", default='0',
                         help="Change the source of the video. Can either be a camera id (0, 1, ...) or a file location (any OpenCV supported file type, .mp4, .webm, etc.)")
     parser.add_argument("--dest", dest="dest", default="ip", help="Point output video to file instead")
+    parser.add_argument("--csv", dest="csv", default="darknet.csv", help="Change output csv name/path")
     args = parser.parse_args()
     YOLO(ip=args.ip, height=args.height, width=args.width, source=args.source, dest=args.dest)
