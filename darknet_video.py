@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import os
 import cv2
 import time
@@ -6,6 +7,8 @@ import mjpegstreamer
 from threading import Thread
 import argparse
 import csv
+
+first = 0
 
 
 def convertBack(x, y, w, h):
@@ -16,7 +19,8 @@ def convertBack(x, y, w, h):
     return xmin, ymin, xmax, ymax
 
 
-def cvDrawBoxes(detections, img, first, csv_name):
+def cvDrawBoxes(detections, img, csv_name):
+    global first
     for detection in detections:
         x, y, w, h = detection[2][0], \
                      detection[2][1], \
@@ -29,22 +33,22 @@ def cvDrawBoxes(detections, img, first, csv_name):
         print("Y:", round(y))
         print("W:", round(w))
         print("H:", round(h))
+
         print("\n")
- 
-        csvData = [detection[0].decode(),round(x),round(y),round(w), round(h)]
-        csvHeader = ['object','X','Y','W','H']
+
+        csvData = [detection[0].decode(), round(x), round(y), round(w), round(h), round(detection[1] * 100, 2)]
+        csvHeader = ['object', 'X', 'Y', 'W', 'H', 'confidence']
 
         if first == 0:
-            with open(csv_name, 'w') as csvFile:
+            with open(csv_name, 'w+') as csvFile:
                 writer = csv.writer(csvFile)
-                writer.writerows(csvHeader)
+                writer.writerow(csvHeader)
                 first = 1
 
-        with open(csv_name, 'a') as csvFile:
+        with open(csv_name, 'a+') as csvFile:
+            print(type(csvData))
             writer = csv.writer(csvFile)
-            writer.writerows(csvData)
-
-        csvFile.close()
+            writer.writerow(csvData)
 
         pt1 = (xmin, ymin)
         pt2 = (xmax, ymax)
@@ -62,7 +66,6 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, dest="ip"
     configPath = "./model.cfg"
     weightPath = "./model.weights"
     metaPath = "./model.data"
-    first = 0
     if not os.path.exists(configPath):
         raise ValueError("Invalid config path `" +
                          os.path.abspath(configPath) + "`")
@@ -89,7 +92,7 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, dest="ip"
                                        darknet.network_height(netMain), 3)
     mjpegstream = None
     out = None
-    if dest=="ip":
+    if dest == "ip":
         mjpegstream = mjpegstreamer.MJPEGServer(ip)
     elif dest.endswith(".mp4"):
         out = cv2.VideoWriter(dest, cv2.VideoWriter_fourcc(*'MP4V'), 7.0, (640, 480))
@@ -106,23 +109,23 @@ def YOLO(width=640, height=480, ip='10.1.90.2', port="8190", source=0, dest="ip"
             darknet.copy_image_from_bytes(darknet_image, frame_resized.tobytes())
 
             detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
-            image = cvDrawBoxes(detections, frame_resized, first, csv_name)
+            image = cvDrawBoxes(detections, frame_resized, csv_name)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            if dest=='ip':
+
+            if dest == 'ip':
                 mjpegstream.send_image(image)
                 if not mjpegstream.started():
                     mpjeg_server_thread = Thread(target=mjpegstream.start, args=(port,), daemon=True)
                     mpjeg_server_thread.start()
             elif dest.endswith(".mp4"):
                 out.write(image)
+            print("FPS:", 1 / (time.time() - prev_time))
     except KeyboardInterrupt:
         import sys
         sys.exit()
 
-    #         print(1/(time.time()-prev_time))
     cap.release()
     out.release()
-
 
 
 if __name__ == "__main__":
@@ -136,4 +139,5 @@ if __name__ == "__main__":
     parser.add_argument("--dest", dest="dest", default="ip", help="Point output video to file instead")
     parser.add_argument("--csv", dest="csv", default="darknet.csv", help="Change output csv name/path")
     args = parser.parse_args()
+    print(*vars(args))
     YOLO(ip=args.ip, height=args.height, width=args.width, source=args.source, dest=args.dest)
