@@ -137,7 +137,7 @@ if __name__ == "__main__":
     parser.add_argument('--source', dest="source", default='0',
                         help="Change the source of the video. Can either be a camera id (0, 1, ...) or a file location (any OpenCV supported file type, .mp4, .webm, etc.)")
     parser.add_argument("--dest", dest="dest", default="ip", help="Point output video to file instead")
-    parser.add_argument("--csv", dest="csv", default="darknet.csv", help="Change output csv name/path")
+    parser.add_argument("--csv", dest="csv", default="darknet.csv", help="Change output csv name/path, default is darknet.csv")
     args = parser.parse_args()
     print(*vars(args))
     YOLO(ip=args.ip, height=args.height, width=args.width, source=args.source, dest=args.dest)

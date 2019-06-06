@@ -1,9 +1,43 @@
-﻿# Yolo-v3 and Yolo-v2 for Windows and Linux
+﻿# Darknet
+Running YOLO on a Jetson Nano
+### Installation - Training
+To train YOLO, you should do it on an Amazon EC2 instance. We're making a Dockerfile that should make that pretty easy. We really don't know how to do it quite yet.
+### Installation - Nano
+You can run this on a Jetson Nano, which we recommend for on the robot processing. We don't have data yet to support why we recommend this processor, but the Nano is good so we like it for now.
+#### Basic setup
+- Find ip address of Nano
+- In a browser on your computer, go to <i>IPAddress</i>:8888
+- Create a new terminal with the '+' button
+
+#### Darknet setup
+ - Clone this repo<br>
+ ```git clone https://github.com/GrantPerkins/darknet.git```
+ - Change directory<br>
+ ```cd darknet```
+ - Compile Darknet library for use with Python<br>
+ ```make```
+ # Literally no idea
+ 
+ ## Running Darknet
+ 
+ To run Darknet, we have a convenient Python 3 script. Run it by saying ```python3 darknet_video.py --INSERT_OPTIONS_HERE``` Below we detail the available options. Submit a pull request if you would like a new option.
+ 
+- ```-h, --help ```     | show this help message and exit
+- ```--ip IP```         | Change the ip address where the MJPEG is streamed. Port is 8190.
+- ```--height HEIGHT``` | Change the height of the input frame
+- ```--width WIDTH```   | Change the width of the input frame
+- ```--source SOURCE``` | Change the source of the video. Can either be a camera id (0, 1, ...) or a file location (any OpenCV supported file type, .mp4, .webm, etc.)
+- ```--dest DEST```     | Point output video to file instead
+- ```--csv CSV```       | Change output csv name/path, default is darknet.csv
+##### Examples
+
+```python3 darknet_video.py --source 1 --dest test.mp4``` Runs darknet from the second camera, writes output to test.mp4<br>
+```python3 darknet_video.py --height 240 --width 320 --ip 10.1.90.2``` Runs darknet with 320x240 images, and makes a stream at ```10.1.90.2:8190```
+
+# Yolo-v3 and Yolo-v2 for Windows and Linux
 ### (neural network for object detection) - Tensor Cores can be used on [Linux](https://github.com/AlexeyAB/darknet#how-to-compile-on-linux) and [Windows](https://github.com/AlexeyAB/darknet#how-to-compile-on-windows-using-vcpkg)
 
 
-## My additions
-I added an MPJEG stream for the python.
 
 More details: http://pjreddie.com/darknet/yolo/
 
